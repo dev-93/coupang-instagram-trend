@@ -1,0 +1,22 @@
+{
+  "name": "coupang-instagram-trend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "daily": "node --import tsx src/index.ts",
+    "dev": "node --watch --import tsx src/index.ts",
+    "verify:naver": "node --import tsx src/verify-naver.ts",
+    "check": "tsc --noEmit",
+    "test": "node --import tsx --test test/*.test.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "fast-xml-parser": "^5.2.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.30",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  }
+}
