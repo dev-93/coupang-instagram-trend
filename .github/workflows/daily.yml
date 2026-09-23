@@ -17,22 +17,24 @@ jobs:
   report:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    env:
-      NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
-      NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
-      NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - name: Check required secrets
+      - run: npm run check
+      - run: npm test
+      - name: Save trend report to Notion
+        env:
+          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
         run: |
           test -n "$NAVER_CLIENT_ID"
           test -n "$NAVER_CLIENT_SECRET"
           test -n "$NOTION_TOKEN"
-      - run: npm run check
-      - run: npm test
-      - run: npm run daily
+          npm run daily
