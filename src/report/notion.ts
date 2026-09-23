@@ -35,8 +35,8 @@ function candidateBlocks(candidate: Candidate): Block[] {
   return [
     block('heading_3', `TOP ${candidate.rank}${candidate.rank <= 3 ? ' ⭐' : ''} · ${candidate.keyword} · ${candidate.scores.totalScore}점`),
     block('bulleted_list_item', `Google: 표시 트래픽 ${candidate.google.approxTraffic.toLocaleString('ko-KR')}+ · ${candidate.google.publishedAt}`),
-    block('bulleted_list_item', `Naver 쇼핑: 최근 3일 ${signal.recentAverage}, 이전 7일 ${signal.priorAverage} · ${change} (정규화 상대값)`),
-    block('bulleted_list_item', `카테고리: ${candidate.category} · 점수: 트렌드 ${candidate.scores.trendScore}, 쇼핑 ${candidate.scores.shoppingScore}, 상품 ${candidate.scores.productFitScore}, 콘텐츠 ${candidate.scores.contentFitScore}`),
+    block('bulleted_list_item', `Naver 쇼핑 클릭 상대지표: 최근 3일 평균 ${signal.recentAverage}, 이전 7일 평균 ${signal.priorAverage} · 변화 ${change} (판매량·절대 클릭 수가 아님)`),
+    block('bulleted_list_item', `예상 카테고리: ${candidate.category} · 점수: 트렌드 ${candidate.scores.trendScore}, 쇼핑 ${candidate.scores.shoppingScore}, 상품 ${candidate.scores.productFitScore}, 콘텐츠 ${candidate.scores.contentFitScore}`),
     block('paragraph', '사람이 확인할 것: 왜 지금 관심받는가? 실제 쿠팡 상품과 자연스럽게 연결되는가? Instagram에서 어떤 유용한 정보로 풀 것인가?')
   ];
 }
@@ -85,19 +85,19 @@ export function notionTop3Payload(candidate: Candidate, report: Report, runPageI
   const properties: Record<string, unknown> = {
     '키워드': { title: richText(candidate.keyword) },
     '발견시각': { date: { start: notionDate } },
-    '순위': { number: candidate.rank },
     '총점': { number: candidate.scores.totalScore },
-    '카테고리': { rich_text: richText(candidate.category) },
+    '예상 카테고리': { rich_text: richText(candidate.category) },
     '검토상태': { select: { name: '미검토' } },
     '실행기록': { relation: [{ id: runPageId }] }
   };
-  if (candidate.shopping.changePercent !== null) {
-    properties['쇼핑 변화율'] = { number: candidate.shopping.changePercent };
-  }
   return {
     parent: { type: 'data_source_id', data_source_id: NOTION_TOP3_DATA_SOURCE_ID },
     properties,
-    children: candidateBlocks(candidate)
+    children: [
+      ...candidateBlocks(candidate),
+      block('heading_2', '검토 메모'),
+      block('paragraph', '판단 이유 · 연결할 상품 · Instagram 콘텐츠 아이디어를 이 아래에 기록하세요.')
+    ]
   };
 }
 

@@ -43,7 +43,7 @@ test('Notion 저장은 페이지 생성 API를 사용하고 새 행 URL을 반�
   }
 });
 
-test('TOP 3 후보는 별도 DB에 실행 기록 관계와 순위를 가진 행으로 저장한다', async () => {
+test('TOP 3 후보는 간결한 컬럼과 상세 근거·메모 공간을 가진 행으로 저장한다', async () => {
   const candidate: Candidate = {
     rank: 1, keyword: '에어프라이어', category: '디지털/가전',
     scores: { trendScore: 75, shoppingScore: 80, productFitScore: 80, contentFitScore: 75, totalScore: 78 },
@@ -53,10 +53,15 @@ test('TOP 3 후보는 별도 DB에 실행 기록 관계와 순위를 가진 행�
       recentAverage: 60, priorAverage: 40, changePercent: 50, dataPoints: 10, status: 'rising'
     }
   };
-  const candidatePayload = notionTop3Payload(candidate, report, 'run-id') as { parent: { data_source_id: string }; properties: Record<string, any> };
+  const candidatePayload = notionTop3Payload(candidate, report, 'run-id') as { parent: { data_source_id: string }; properties: Record<string, any>; children: Record<string, any>[] };
   assert.equal(candidatePayload.parent.data_source_id, '973e5e8f-76d9-463b-9234-62b45c7cce4c');
-  assert.equal(candidatePayload.properties['순위'].number, 1);
+  assert.deepEqual(Object.keys(candidatePayload.properties).sort(), ['검토상태', '발견시각', '실행기록', '예상 카테고리', '총점', '키워드'].sort());
+  assert.equal(candidatePayload.properties['예상 카테고리'].rich_text[0].text.content, '디지털/가전');
   assert.deepEqual(candidatePayload.properties['실행기록'].relation, [{ id: 'run-id' }]);
+  const detail = JSON.stringify(candidatePayload.children);
+  assert.match(detail, /TOP 1/);
+  assert.match(detail, /변화 \+50%/);
+  assert.match(detail, /검토 메모/);
 
   const originalFetch = globalThis.fetch;
   let calls = 0;
