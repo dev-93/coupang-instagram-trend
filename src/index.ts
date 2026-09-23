@@ -68,7 +68,7 @@ async function main(): Promise<void> {
     top3: top10.slice(0, 3), top10, review, excluded, notes
   };
   const result = await saveNotionReport(report, notionToken);
-  console.log(`Google ${trends.length}개 → 사람 확인 ${review.length}개 → 쇼핑 후보 ${eligible.length}개 → 최종 ${top10.length}개`);
+  console.log(`Google ${trends.length}개 → 미분류 ${review.length}개 → 쇼핑 후보 ${eligible.length}개 → 최종 ${top10.length}개`);
   console.log(`Notion 실행기록: ${result.runUrl}`);
   console.log(`Notion TOP 3 후보: ${result.top3Saved}개`);
 }
