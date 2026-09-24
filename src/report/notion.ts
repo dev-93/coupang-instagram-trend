@@ -31,23 +31,33 @@ function koreanDateTime(iso: string): { title: string; notionDate: string } {
 
 function candidateBlocks(candidate: Candidate): Block[] {
   const signal = candidate.shopping;
-  const change = signal.changePercent === null ? '기준 기간 평균 0' : `${signal.changePercent > 0 ? '+' : ''}${signal.changePercent}%`;
+  const change = signal?.changePercent === null ? '기준 기간 평균 0' :
+    signal?.changePercent === undefined ? '확인 불가' : `${signal.changePercent > 0 ? '+' : ''}${signal.changePercent}%`;
+  const shoppingStatus = signal ? { rising: '상승', flat: '보합', falling: '하락', no_data: '데이터 부족' }[signal.status] : '';
+  const sources = [candidate.google ? 'Google' : '', signal ? 'Naver' : ''].filter(Boolean).join(' + ');
   return [
-    block('heading_3', `TOP ${candidate.rank}${candidate.rank <= 3 ? ' ⭐' : ''} · ${candidate.keyword} · ${candidate.scores.totalScore}점`),
-    block('bulleted_list_item', `Google: 표시 트래픽 ${candidate.google.approxTraffic.toLocaleString('ko-KR')}+ · ${candidate.google.publishedAt}`),
-    block('bulleted_list_item', `Naver 쇼핑 클릭 상대지표: 최근 3일 평균 ${signal.recentAverage}, 이전 7일 평균 ${signal.priorAverage} · 변화 ${change} (판매량·절대 클릭 수가 아님)`),
-    block('bulleted_list_item', `예상 카테고리: ${candidate.category} · 점수: 트렌드 ${candidate.scores.trendScore}, 쇼핑 ${candidate.scores.shoppingScore}, 상품 ${candidate.scores.productFitScore}, 콘텐츠 ${candidate.scores.contentFitScore}`),
+    block('heading_3', `TOP ${candidate.rank}${candidate.rank <= 3 ? ' ⭐' : ''} · ${candidate.keyword} · ${candidate.scores.totalScore}점 · ${sources}`),
+    block('bulleted_list_item', candidate.google
+      ? `Google: 표시 트래픽 ${candidate.google.approxTraffic.toLocaleString('ko-KR')}+ · ${candidate.google.publishedAt}`
+      : 'Google: 현재 RSS에서 발견되지 않음'),
+    block('bulleted_list_item', signal
+      ? `Naver 쇼핑 클릭 상대지표: ${shoppingStatus} · 최근 3일 평균 ${signal.recentAverage}, 이전 7일 평균 ${signal.priorAverage} · 변화 ${change} · 관측 ${signal.dataPoints}일 (판매량·절대 클릭 수가 아님)`
+      : 'Naver: 이 키워드는 독립 조회 목록에 없어 미조회'),
+    block('bulleted_list_item', `예상 카테고리: ${candidate.category} · 점수: 트렌드 ${candidate.scores.trendScore ?? '미수집'}, 쇼핑 ${candidate.scores.shoppingScore ?? '미수집'}, 상품 ${candidate.scores.productFitScore}, 콘텐츠 ${candidate.scores.contentFitScore}`),
     block('paragraph', '사람이 확인할 것: 왜 지금 관심받는가? 실제 쿠팡 상품과 자연스럽게 연결되는가? Instagram에서 어떤 유용한 정보로 풀 것인가?')
   ];
 }
 
 export function notionReportPayload(report: Report, dataSourceId = NOTION_DATA_SOURCE_ID): Record<string, unknown> {
   const { title, notionDate } = koreanDateTime(report.generatedAt);
-  const top3 = report.top3.map((candidate) => `${candidate.rank}. ${candidate.keyword} (${candidate.scores.totalScore}점)`).join(' · ') || '없음';
+  const top3 = report.top3.map((candidate) => {
+    const status = candidate.shopping ? { rising: '상승', flat: '보합', falling: '하락', no_data: '데이터 부족' }[candidate.shopping.status] : 'Naver 미수집';
+    return `${candidate.rank}. ${candidate.keyword} (${candidate.scores.totalScore}점, ${status})`;
+  }).join(' · ') || '없음';
   const children: Block[] = [
     block('heading_2', '우선 확인 TOP 3'),
     block('paragraph', top3),
-    block('paragraph', `Google 수집 ${report.counts.collected}개 · 미분류 ${report.counts.review}개 · 쇼핑 후보 ${report.counts.eligible}개 · 최종 후보 ${report.counts.ranked}개`),
+    block('paragraph', `Google 수집 ${report.counts.googleCollected}개(상품 후보 ${report.counts.googleEligible}개, 미분류 ${report.counts.googleReview}개) · Naver 독립 조회 ${report.counts.naverQueried}개(추이 확보 ${report.counts.naverWithData}개) · 최종 후보 ${report.counts.ranked}개`),
     block('paragraph', '네이버 쇼핑 클릭 지표는 조회 구간의 정규화 상대값입니다. 절대 검색량·판매량이 아닙니다.'),
     ...report.notes.map((note) => block('bulleted_list_item', note)),
     block('heading_2', 'TOP 10')
@@ -62,7 +72,7 @@ export function notionReportPayload(report: Report, dataSourceId = NOTION_DATA_S
   )));
   children.push(block('heading_2', '제외된 키워드'));
   if (report.excluded.length === 0) children.push(block('paragraph', '없음'));
-  else children.push(...report.excluded.map((item) => block('bulleted_list_item', `${item.keyword}: ${item.reason}`)));
+  else children.push(...report.excluded.map((item) => block('bulleted_list_item', `${item.keyword} [${item.source}]: ${item.reason}`)));
   if (children.length > 100) throw new Error('Notion 페이지 블록 100개 제한을 초과했습니다. 후보 수 또는 제외 목록을 줄이세요.');
   return {
     parent: { type: 'data_source_id', data_source_id: dataSourceId },
@@ -70,9 +80,9 @@ export function notionReportPayload(report: Report, dataSourceId = NOTION_DATA_S
       '실행': { title: richText(title) },
       '실행시각': { date: { start: notionDate } },
       '상태': { select: { name: report.top10.length ? '후보 있음' : '후보 없음' } },
-      'Google 수집': { number: report.counts.collected },
-      '미분류 수': { number: report.counts.review },
-      '쇼핑 후보': { number: report.counts.eligible },
+      'Google 수집': { number: report.counts.googleCollected },
+      '미분류 수': { number: report.counts.googleReview },
+      '쇼핑 후보': { number: report.counts.naverWithData },
       '최종 후보': { number: report.counts.ranked },
       'TOP 3': { rich_text: richText(top3) }
     },

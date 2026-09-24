@@ -3,9 +3,10 @@ import test from 'node:test';
 import { parseGoogleRss } from '../src/collectors/google-trends.js';
 import { collectNaverShopping, NAVER_ENDPOINT, shoppingWindow, summarizeShopping } from '../src/collectors/naver-shopping.js';
 import { classifyTrend } from '../src/filters/keyword-filter.js';
-import { scoreShopping } from '../src/scoring/scorer.js';
+import { mergeCandidatePool } from '../src/scoring/candidate-pool.js';
+import { scoreCandidate, scoreShopping } from '../src/scoring/scorer.js';
 import { naverCredentials } from '../src/config/env.js';
-import type { ClassifiedTrend, Trend } from '../src/types.js';
+import type { ClassifiedTrend, ShoppingKeyword, ShoppingSignal, Trend } from '../src/types.js';
 
 test('Google RSS의 키워드, 표시 트래픽, 뉴스 문맥을 읽는다', () => {
   const xml = `<?xml version="1.0"?><rss><channel><item>
@@ -61,10 +62,9 @@ test('네이버 API HUB에 공식 경로·인증 헤더·키워드 배열을 전
     })) }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   };
   try {
-    const base: ClassifiedTrend = {
+    const base: ShoppingKeyword = {
       keyword: '에어프라이어', category: '디지털/가전', categoryCode: '50000003',
-      productFitScore: 80, contentFitScore: 75,
-      approxTraffic: 500, publishedAt: '2026-09-23T06:00:00.000Z', newsTitles: [], url: ''
+      productFitScore: 80, contentFitScore: 75
     };
     const signals = await collectNaverShopping([base, { ...base, keyword: '냉장고' }], '2026-09-23', { id: 'test-id', secret: 'test-secret' });
     assert.equal(calls, 1);
@@ -72,6 +72,74 @@ test('네이버 API HUB에 공식 경로·인증 헤더·키워드 배열을 전
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test('Google 후보가 없어도 네이버 독립 키워드가 후보가 된다', () => {
+  const seed: ShoppingKeyword = {
+    keyword: '양념 소불고기', category: '식품', categoryCode: '50000006',
+    productFitScore: 85, contentFitScore: 85
+  };
+  const signal: ShoppingSignal = {
+    keyword: seed.keyword, categoryCode: seed.categoryCode,
+    startDate: '2026-09-14', endDate: '2026-09-23',
+    recentAverage: 60, priorAverage: 40, changePercent: 50, dataPoints: 10, status: 'rising'
+  };
+  const pool = mergeCandidatePool([], [], [seed], new Map([[seed.keyword, signal]]));
+  assert.equal(pool.inputs.length, 1);
+  assert.equal(pool.naverWithData, 1);
+  const candidate = scoreCandidate(pool.inputs[0], new Date('2026-09-24T06:00:00Z'));
+  assert.equal(candidate.google, null);
+  assert.equal(candidate.scores.trendScore, null);
+  assert.notEqual(candidate.scores.shoppingScore, null);
+  assert.equal(candidate.keyword, seed.keyword);
+});
+
+test('두 출처에서 같은 키워드가 나오면 한 후보에 신호를 합친다', () => {
+  const trend: ClassifiedTrend = {
+    keyword: '에어프라이어', category: '디지털/가전', categoryCode: '50000003',
+    productFitScore: 80, contentFitScore: 75,
+    approxTraffic: 2000, publishedAt: '2026-09-24T04:00:00Z', newsTitles: [], url: 'google-url'
+  };
+  const seed: ShoppingKeyword = {
+    keyword: '에어프라이어', category: trend.category, categoryCode: trend.categoryCode,
+    productFitScore: trend.productFitScore, contentFitScore: trend.contentFitScore
+  };
+  const signal: ShoppingSignal = {
+    keyword: seed.keyword, categoryCode: seed.categoryCode,
+    startDate: '2026-09-14', endDate: '2026-09-23',
+    recentAverage: 50, priorAverage: 50, changePercent: 0, dataPoints: 10, status: 'flat'
+  };
+  const pool = mergeCandidatePool([trend], [], [seed], new Map([[seed.keyword, signal]]));
+  assert.equal(pool.inputs.length, 1);
+  const candidate = scoreCandidate(pool.inputs[0], new Date('2026-09-24T06:00:00Z'));
+  assert.notEqual(candidate.google, null);
+  assert.notEqual(candidate.shopping, null);
+  assert.notEqual(candidate.scores.trendScore, null);
+  assert.notEqual(candidate.scores.shoppingScore, null);
+});
+
+test('네이버 추이 날짜가 부족해도 Google 후보는 유지된다', () => {
+  const trend: ClassifiedTrend = {
+    keyword: '에어프라이어', category: '디지털/가전', categoryCode: '50000003',
+    productFitScore: 80, contentFitScore: 75,
+    approxTraffic: 2000, publishedAt: '2026-09-24T04:00:00Z', newsTitles: [], url: 'google-url'
+  };
+  const seed: ShoppingKeyword = {
+    keyword: trend.keyword, category: trend.category, categoryCode: trend.categoryCode,
+    productFitScore: trend.productFitScore, contentFitScore: trend.contentFitScore
+  };
+  const signal: ShoppingSignal = {
+    keyword: seed.keyword, categoryCode: seed.categoryCode,
+    startDate: '2026-09-14', endDate: '2026-09-23',
+    recentAverage: 0, priorAverage: 0, changePercent: null, dataPoints: 8, status: 'no_data'
+  };
+  const pool = mergeCandidatePool([trend], [], [seed], new Map([[seed.keyword, signal]]));
+  assert.deepEqual(pool.naverNoData, [{ keyword: seed.keyword, dataPoints: 8 }]);
+  assert.equal(pool.inputs.length, 1);
+  const candidate = scoreCandidate(pool.inputs[0], new Date('2026-09-24T06:00:00Z'));
+  assert.notEqual(candidate.google, null);
+  assert.equal(candidate.shopping, null);
+  assert.equal(candidate.scores.shoppingScore, null);
 });
 
 test('problem-radar의 NAVER 환경변수 이름과 기존 안내 이름을 인식한다', () => {

@@ -1,4 +1,4 @@
-import type { ClassifiedTrend, ShoppingSignal } from '../types.js';
+import type { ShoppingKeyword, ShoppingSignal } from '../types.js';
 import { scoring } from '../config/rules.js';
 
 export const NAVER_ENDPOINT = 'https://naverapihub.apigw.ntruss.com/shopping/v1/category/keywords';
@@ -54,12 +54,12 @@ export function summarizeShopping(
 }
 
 export async function collectNaverShopping(
-  trends: ClassifiedTrend[],
+  trends: ShoppingKeyword[],
   reportDate: string,
   credentials: { id: string; secret: string }
 ): Promise<Map<string, ShoppingSignal>> {
   const { startDate, endDate } = shoppingWindow(reportDate);
-  const byCategory = new Map<string, ClassifiedTrend[]>();
+  const byCategory = new Map<string, ShoppingKeyword[]>();
   for (const trend of trends) {
     const existing = byCategory.get(trend.categoryCode) ?? [];
     existing.push(trend);

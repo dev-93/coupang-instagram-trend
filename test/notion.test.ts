@@ -6,10 +6,10 @@ import type { Candidate, Report } from '../src/types.js';
 const report: Report = {
   date: '2026-09-23', generatedAt: '2026-09-23T09:00:00.000Z', timezone: 'Asia/Seoul',
   sources: { google: 'google-url', naver: 'naver-url' },
-  counts: { collected: 10, review: 1, eligible: 0, ranked: 0 },
+  counts: { googleCollected: 10, googleEligible: 0, googleReview: 1, naverQueried: 6, naverWithData: 0, ranked: 0 },
   top3: [], top10: [],
   review: [{ keyword: '미분류', approxTraffic: 500, publishedAt: '2026-09-23T08:00:00.000Z', newsTitles: [], reason: '사람 확인 필요' }],
-  excluded: [{ keyword: '뉴스', reason: '상품 연결 어려움' }], notes: []
+  excluded: [{ keyword: '뉴스', source: 'Google', reason: '상품 연결 어려움' }], notes: []
 };
 
 test('Notion 실행 기록에 한국시간과 미분류 목록을 보관하고 JSON 블록은 만들지 않는다', () => {
@@ -20,6 +20,8 @@ test('Notion 실행 기록에 한국시간과 미분류 목록을 보관하고 J
   assert.equal(payload.properties['실행시각'].date.start, '2026-09-23T18:00:00+09:00');
   assert.equal(payload.properties['상태'].select.name, '후보 없음');
   assert.equal(payload.properties['미분류 수'].number, 1);
+  assert.equal(payload.properties['쇼핑 후보'].number, 0);
+  assert.match(JSON.stringify(payload.children), /Naver 독립 조회 6개/);
   assert.equal(payload.children.some((child) => child.type === 'code'), false);
   assert.equal(payload.children.some((child) => JSON.stringify(child).includes('미분류')), true);
 });
@@ -60,6 +62,7 @@ test('TOP 3 후보는 간결한 컬럼과 상세 근거·메모 공간을 가진
   assert.deepEqual(candidatePayload.properties['실행기록'].relation, [{ id: 'run-id' }]);
   const detail = JSON.stringify(candidatePayload.children);
   assert.match(detail, /TOP 1/);
+  assert.match(detail, /Google \+ Naver/);
   assert.match(detail, /변화 \+50%/);
   assert.match(detail, /검토 메모/);
 
