@@ -1,31 +1,39 @@
 # 콘텐츠 실험안 운영
 
 GitHub Actions는 한국시간 매일 17:00에 한 번 데이터를 수집하고 기존 Notion DB에 기록한다.
-Codex 예약 작업은 매일 18:00에 당일 수집 기록을 읽고 웹의 실제 사용 경험·상품 설명을 조사한 뒤, 시도할 만한 실험안만 Telegram으로 보낸다.
-AI API 키와 유료 AI 호출은 사용하지 않는다. Codex 실행에는 사용 중인 구독의 사용량 제한이 적용된다.
+Mac의 launchd 예약 작업은 매일 18:00에 Codex CLI를 실행한다. 당일 수집 기록과 웹의 실제 사용 경험·상품 설명을 조사한 뒤, 시도할 만한 실험안만 기존 전송 코드로 Telegram에 보낸다.
+별도 AI API 키나 유료 AI API 연동을 사용하지 않는다. CLI는 ChatGPT 계정 로그인을 재사용하고 구독 사용량 제한이 적용된다.
 
-## 예약 화면에 넣을 설정
+## Mac 예약 등록과 확인
 
-- 이름: 쿠팡 콘텐츠 실험안
-- 프로젝트: `/Users/taenam/business/coupang-instagram-trend`
-- 실행 위치: **로컬 프로젝트**. `.env`와 전송 이력을 함께 사용하므로 새 worktree를 선택하지 않는다.
-- 시간: 매일 **18:00**, Asia/Seoul. 17:00 수집 기록을 읽고 해석·전송을 시작한다.
-- 사용자 지정 RRULE이 필요한 화면: `FREQ=DAILY;BYHOUR=18;BYMINUTE=0;BYSECOND=0`
-- 프롬프트:
+- 프로젝트: `/Users/taenam/business/coupang-instagram-trend`. `.env`와 전송 이력을 함께 쓰는 기존 로컬 프로젝트를 사용한다.
+- 시간: 매일 **18:00**, Mac 시간대 Asia/Seoul. 17:00 수집 기록을 읽고 해석·전송을 시작하며 조사 후 알림이 도착한다.
+- 실행: `launchd → caffeinate → Node 실행 코드 → codex exec → JSON 검증 → Telegram`.
 
-```text
-한국시간 매일 18:00에 이 프로젝트의 AGENTS.md와 docs/content-briefing.md의 ‘예약 작업 실행 지침’을 읽고 그대로 수행하라. 당일 17:00 이후 수집된 Notion 후보를 실제 소비자의 불편과 연결해 근거가 있는 Instagram 콘텐츠 실험안을 최대 1개 만들고 지정된 Telegram에 보내라. 당일 수집이 아직 끝나지 않았으면 과거 기록으로 새 실험안을 만들지 말라. 유료 AI API, 새 Notion DB, Instagram 자동 게시를 추가하지 말라. 출력이 없는 날은 억지로 추천하지 말라.
+```bash
+codex login status       # ChatGPT 로그인인지 확인. 미로그인이면 codex login
+npm run schedule:install # 매일 18:00 등록 후 launchctl로 실제 등록 확인
+npm run schedule:status  # 예약 상태·최근 실행 결과
+npm run schedule:remove # 콘텐츠 해석·Telegram 예약 해제
 ```
 
-예약 작업은 아직 이 파일만으로 등록되지 않는다. Codex 앱의 Scheduled/예약 작업 화면에서 한 번 등록해야 한다.
-로컬 예약 작업은 Mac과 앱이 켜져 있고 프로젝트 폴더가 있어야 실행된다.
+등록 파일은 `~/Library/LaunchAgents/com.taenam.coupang-content-briefing.plist`다. 이 문서나 GitHub 코드만으로 다른 Mac에 예약이 등록되지는 않는다. Node/Codex 또는 프로젝트 경로를 바꾸면 다시 등록한다. Codex 앱 내장 예약과 동시에 등록하지 않는다.
+Mac 로그인·전원·인터넷과 프로젝트 폴더, CLI의 ChatGPT 로그인이 필요하다. Codex 앱이나 현재 대화는 열어둘 필요가 없다. 잠자기 중 놓친 예약은 깨어날 때 한 번 실행되며, 자정이 지나면 지난날 후보를 오늘 실험으로 보내지 않는다. 꺼진 Mac을 깨우거나 시스템 잠자기 설정을 바꾸지는 않는다. `caffeinate`는 실행 도중 유휴 잠자기만 막는다.
+Codex CLI는 읽기 전용·실시간 웹 검색·비대화형으로 실행한다. 개인 실행 설정을 불러오지 않고 ChatGPT 로그인만 허용하며 API 키·Notion/Telegram 토큰·현재 앱 세션 환경을 전달하지 않는다. 원문과 전체 CLI 진행 출력을 로그에 저장하지 않으며 임시 세션은 저장하지 않는다. 결과 JSON은 기존 검증·중복 방지·전송 코드를 거친다. 조사는 최대 20분이며 실패하면 성공으로 기록하지 않는다.
+낮에 `npm run briefing:scheduled`를 실행하면 알림 없이 점검을 마친다. `.runtime/scheduler-status.json`에 최근 결과, `.runtime/scheduler.log`에 짧은 운영 기록이 남는다. 잠금이나 `pending` 기록은 자동 삭제하지 않는다.
 수집 서버와 Codex의 해석 예약은 별개다. 코드 실행 실패가 수집 일정을 삭제하지는 않지만, 실패한 실행은 결과를 만들지 못할 수 있다.
-사업 실험을 중단할 때는 GitHub의 `Daily shopping trends`와 Codex의 이 예약 작업을 각각 비활성화한다.
+사업 실험을 중단할 때는 GitHub의 `Daily shopping trends` 비활성화와 `npm run schedule:remove`를 각각 수행한다.
 GitHub 공개 저장소의 무활동으로 인한 예약 비활성화, Codex 구독 한도 및 권한도 별도로 확인한다.
+
+### 설정 변경 기록 · 2026-09-27
+
+앱 내장 예약 화면에서 등록하지 못했던 해석 작업을 Mac `launchd`가 Codex CLI를 실행하는 방식으로 전환했다. 수집은 GitHub에서 매일 17:00, 해석·Telegram 처리는 Mac에서 매일 18:00에 시작한다.
+
+이 Mac에서 `Hour=18`, `Minute=0`의 실제 예약 등록을 확인했다. 같은 예약 명령을 낮에 실행해 알림 없이 종료 코드 0으로 끝나는 것을 점검했고, ChatGPT 로그인·비대화형 CLI·웹 검색과 원문 열기·최종 JSON 응답도 확인했다. 타입 검사와 테스트 24개가 통과했다. 첫 정시 실행의 실험안 발송 여부는 `npm run schedule:status`와 Telegram에서 확인한다.
 
 ## 예약 작업 실행 지침
 
-아래 지침은 Codex가 실행한다. 일반 Node.js 코드가 가설을 자동 생성하지는 않는다.
+아래는 조회·조사·전송을 합친 전체 절차다. 일반 Node.js 코드가 가설을 자동 생성하지는 않는다. Mac 예약에서는 실행 코드가 1~4의 조회·중복·수집 상태를 확인하고 결과를 Codex에 전달한다. Codex는 5~11의 웹 조사와 실험안 작성만 읽기 전용으로 수행하며 최종 응답을 `{ "briefing": 실험안 JSON }`으로 출력한다. 12~13의 검증·저장·전송은 실행 코드가 담당한다. 대화에서 수동으로 진행할 때는 아래 절차 전체를 따른다.
 
 1. 작업 디렉터리를 위 프로젝트로 설정한다. `npm run briefing:read`로 최신 Notion 실행 기록, 본문, 전송 이력을 읽는다. 이 명령은 DB를 수정하거나 보고서 파일을 생성하지 않는다. `.env` 내용이나 자격 증명은 읽어 출력하지 않는다.
 2. `pendingDelivery`가 있으면 해당 실행의 전송 여부가 불확실하다. 같은 메시지를 재전송하지 말고 예약 결과에 확인 필요를 남긴다. 잠금·상태 파일을 임의로 삭제하지 않는다.
@@ -96,4 +104,4 @@ GitHub 공개 저장소의 무활동으로 인한 예약 비활성화, Codex 구
 - 사용자가 기존 실험안의 가독성 수정을 요청하면 `npm run briefing:refresh -- .runtime/briefing.json`으로 같은 실험의 기존 메시지를 수정할 수 있다. 새 메시지를 보내거나 중복 방지 기록을 초기화하지 않는다. 예약 실행 중에는 사용하지 않는다.
 - 전송 응답이 불확실하면 `pending`을 남겨 자동 재전송을 막는다. 실제 Telegram 수신 여부를 확인한 뒤 기록을 정리한다. 프로세스가 강제 종료되면 잠금 파일이 남을 수 있으므로 확인 후에만 정리한다.
 - `.env`에는 로컬 토큰을 저장한다. GitHub에 Telegram 토큰을 전달하지 않으며, GitHub 수집 코드 자체가 AI 해석을 수행하지 않는다.
-- 참고: [Codex 예약 작업](https://developers.openai.com/codex/app/automations), [Telegram sendMessage](https://core.telegram.org/bots/api#sendmessage).
+- 참고: [Codex 비대화형 실행](https://developers.openai.com/codex/noninteractive), [ChatGPT 인증](https://developers.openai.com/codex/auth), [Telegram sendMessage](https://core.telegram.org/bots/api#sendmessage). Mac 예약의 잠자기 처리는 시스템의 `man launchd.plist`에서 `StartCalendarInterval` 설명을 확인할 수 있다.

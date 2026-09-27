@@ -68,9 +68,18 @@ Google 후보가 없어도 네이버 감시 목록은 조회합니다. 두 수�
 
 로컬 `.env`에 `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`를 추가합니다. `npm run telegram:test`로 연결을 확인합니다. 토큰은 Git에 넣거나 로그에 출력하지 않습니다.
 
-[콘텐츠 실험안 운영 지침](docs/content-briefing.md)에 **매일 18:00** 예약 설정과 실행 프롬프트를 준비했습니다. Codex가 당일 17:00 이후의 수집 기록과 웹의 실제 사용 경험을 읽고 **대상·불편·근거·영상 장면·상품 연결·구매 이유·측정**을 최대 1개 실험안으로 정리합니다. 수집이 아직 끝나지 않았으면 과거 기록을 오늘 새 후보로 보내지 않습니다. 새 실험안이 없으면 알림을 생략하며, 같은 기록과 같은 실험의 반복 전송을 막습니다. 전송 메시지는 항상 `[쿠팡]`으로 시작합니다.
+[콘텐츠 실험안 운영 지침](docs/content-briefing.md)에 따라 Mac의 `launchd`가 **매일 18:00**에 Codex CLI를 실행합니다. Codex가 당일 17:00 이후의 수집 기록과 웹의 실제 사용 경험을 읽고 **대상·불편·근거·영상 장면·상품 연결·구매 이유·측정**을 최대 1개 실험안으로 정리합니다. 수집이 아직 끝나지 않았으면 과거 기록을 오늘 새 후보로 보내지 않습니다. 새 실험안이 없으면 알림을 생략하며, 같은 기록과 같은 실험의 반복 전송을 막습니다. 전송 메시지는 항상 `[쿠팡]`으로 시작합니다.
 
-일반 Node.js 수집기가 AI 가설을 만드는 것은 아닙니다. Codex 예약 작업을 별도로 등록해야 하고, **Mac과 앱이 켜져 있어야** 로컬 해석·전송이 실행됩니다. 기존 GitHub 수집은 Mac 상태와 별개로 유지됩니다. 유료 AI API를 추가하지 않으며 Codex 구독 사용량 제한은 적용됩니다. 새 Notion DB는 만들지 않습니다. `.runtime/`에는 비공개 처리·전송 이력만 남기고 Git에서 제외합니다.
+일반 Node.js 수집기가 AI 가설을 만드는 것은 아닙니다. Codex CLI가 ChatGPT 계정으로 로그인되어 있어야 하며 **Mac이 켜져 있고 로그인·인터넷 연결이 유지되어야** 합니다. Codex 앱이나 이 대화는 열어둘 필요가 없습니다. 잠자기 중 놓친 예약은 깨어날 때 실행되지만 당일 데이터가 없으면 추천을 보류합니다. 기존 GitHub 수집은 Mac 상태와 별개로 유지됩니다. 유료 AI API를 추가하지 않으며 Codex 구독 사용량 제한은 적용됩니다. 새 Notion DB는 만들지 않습니다. `.runtime/`에는 실험안·처리 이력·예약 상태만 남기고 Git에서 제외합니다.
+
+```bash
+codex login status       # Logged in using ChatGPT 확인
+npm run schedule:install # Mac 시간대 Asia/Seoul에서 매일 18:00 예약 등록
+npm run schedule:status  # 실제 등록과 최근 실행 결과 확인
+npm run schedule:remove # 로컬 해석·Telegram 예약 해제 (GitHub 수집은 별도)
+```
+
+예약은 `~/Library/LaunchAgents/com.taenam.coupang-content-briefing.plist`에 등록됩니다. 프로젝트나 Node/Codex 설치 경로가 바뀌면 다시 설치합니다. 실행 중 오류가 나도 다음날 예약은 유지됩니다. Codex는 읽기 전용으로 조사하며, JSON 형식·최신 기록·중복 여부를 기존 코드가 확인한 뒤 전송합니다. 낮에 `npm run briefing:scheduled`로 점검하면 알림 없이 종료합니다. 실행 상태는 `.runtime/scheduler-status.json`, 운영 로그는 `.runtime/scheduler.log`에 남습니다. 앱 내장 예약을 동시에 등록하지 않습니다.
 
 수집 결과가 26시간보다 오래됐거나 Notion 조회가 실패하면 추천을 보류합니다. 전송 응답을 확인하지 못했으면 중복 방지를 위해 자동 재전송하지 않습니다. 데이터가 충분해도 실제 콘텐츠 반응이나 구매 전환을 보장하지는 않습니다.
 

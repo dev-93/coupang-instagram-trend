@@ -10,6 +10,10 @@
     "briefing:read": "node --import tsx src/briefing-cli.ts read",
     "briefing:send": "node --import tsx src/briefing-cli.ts send",
     "briefing:refresh": "node --import tsx src/briefing-cli.ts refresh",
+    "briefing:scheduled": "node --import tsx src/scheduled-briefing.ts",
+    "schedule:install": "node --import tsx src/schedule-cli.ts install",
+    "schedule:status": "node --import tsx src/schedule-cli.ts status",
+    "schedule:remove": "node --import tsx src/schedule-cli.ts remove",
     "telegram:test": "node --import tsx src/briefing-cli.ts test",
     "check": "tsc --noEmit",
     "test": "node --import tsx --test test/*.test.ts"
