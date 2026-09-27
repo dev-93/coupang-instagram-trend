@@ -8,7 +8,8 @@ export const excludedContext: { label: string; pattern: RegExp }[] = [
 ];
 
 export const categories = [
-  { name: '식품', code: '50000006', pattern: /음식|식품|식재료|과일|채소|고기|육류|생선|김치|반찬|라면|커피|차|간식|빵|쌀|단백질|다이어트|식단|요리|레시피|추석|명절/, productFitScore: 85, contentFitScore: 85 },
+  // 한 글자 '차'는 열차·자동차에도 매칭되므로, 음료를 뜻하는 구체적인 단어만 사용한다.
+  { name: '식품', code: '50000006', pattern: /음식|식품|식재료|과일|채소|고기|육류|생선|김치|반찬|라면|커피|녹차|홍차|보리차|보이차|우롱차|허브차|티백|간식|빵|쌀|단백질|다이어트|식단|요리|레시피|추석|명절/, productFitScore: 85, contentFitScore: 85 },
   { name: '생활/건강', code: '50000008', pattern: /생활|청소|세제|수납|욕실|세탁|영양제|건강|비타민|마스크|가습기|선풍기|난방|핫팩|텀블러|주방|냄비|프라이팬|칼|식기/, productFitScore: 85, contentFitScore: 80 },
   { name: '화장품/미용', code: '50000002', pattern: /뷰티|화장품|메이크업|선크림|선스틱|스킨케어|피부|립스틱|향수|헤어|샴푸|로션/, productFitScore: 85, contentFitScore: 85 },
   { name: '디지털/가전', code: '50000003', pattern: /냉장고|에어컨|에어프라이어|청소기|전자레인지|노트북|태블릿|이어폰|스마트폰|갤럭시|아이폰|충전기|모니터/, productFitScore: 80, contentFitScore: 75 },

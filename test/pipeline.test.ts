@@ -29,6 +29,29 @@ test('제품 키워드라도 일회성 뉴스 문맥이면 제외한다', () => 
   assert.equal(classifyTrend({ ...trend, keyword: '낯선주제' }).review, true);
 });
 
+test('RSS 일부 항목의 날짜가 잘못되어도 나머지 항목을 수집한다', () => {
+  const xml = `<rss><channel>
+    <item><title>잘못된 항목</title><pubDate>unknown</pubDate></item>
+    <item><title>선크림</title><pubDate>Tue, 22 Sep 2026 23:50:00 -0700</pubDate></item>
+  </channel></rss>`;
+  assert.deepEqual(parseGoogleRss(xml).map((item) => item.keyword), ['선크림']);
+});
+
+test('열차·자동차를 차 음료로 오분류하지 않고 실제 음료는 식품 후보로 남긴다', () => {
+  const trend: Trend = {
+    keyword: '열차', approxTraffic: 500,
+    publishedAt: '2026-09-24T23:00:00.000Z', newsTitles: [], url: 'example'
+  };
+  for (const keyword of ['열차', '자동차', '주차']) {
+    const result = classifyTrend({ ...trend, keyword });
+    assert.equal(result.value, undefined, keyword);
+    assert.equal(result.review, true, keyword);
+  }
+  for (const keyword of ['녹차', '홍차', '보리차 티백']) {
+    assert.equal(classifyTrend({ ...trend, keyword }).value?.category, '식품', keyword);
+  }
+});
+
 test('쇼핑 점수는 같은 기간의 상대 비율에서 최근 3일과 이전 7일을 비교한다', () => {
   const { startDate, endDate } = shoppingWindow('2026-09-23');
   assert.equal(startDate, '2026-09-13');
@@ -42,6 +65,16 @@ test('쇼핑 점수는 같은 기간의 상대 비율에서 최근 3일과 이�
   assert.equal(signal.status, 'rising');
   assert.equal(scoreShopping(signal), 100);
   assert.equal(summarizeShopping('에어프라이어', '50000003', startDate, endDate, data.slice(1)).status, 'no_data');
+});
+
+test('중복·범위 밖 날짜·잘못된 비율을 유효한 관측 일수로 세지 않는다', () => {
+  const { startDate, endDate } = shoppingWindow('2026-09-23');
+  const data = Array.from({ length: 9 }, (_, index) => ({ period: `2026-09-${13 + index}`, ratio: 30 }));
+  const signal = summarizeShopping('밀폐용기', '50000008', startDate, endDate, [
+    ...data, data[0], { period: '2026-09-12', ratio: 30 }, { period: '2026-09-22', ratio: -10 }
+  ]);
+  assert.equal(signal.status, 'no_data');
+  assert.equal(signal.dataPoints, 9);
 });
 
 test('네이버 API HUB에 공식 경로·인증 헤더·키워드 배열을 전송한다', async () => {

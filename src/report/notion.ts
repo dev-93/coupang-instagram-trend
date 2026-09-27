@@ -4,7 +4,7 @@ import type { Candidate, Report } from '../types.js';
 export const NOTION_DATA_SOURCE_ID = 'b94fbf44-68b3-46f2-aab3-a74b20841ce5';
 export const NOTION_TOP3_DATA_SOURCE_ID = '973e5e8f-76d9-463b-9234-62b45c7cce4c';
 const NOTION_API = 'https://api.notion.com/v1/pages';
-const NOTION_VERSION = '2025-09-03';
+export const NOTION_VERSION = '2025-09-03';
 
 type RichText = { type: 'text'; text: { content: string } };
 type Block = Record<string, unknown>;
@@ -41,7 +41,7 @@ function candidateBlocks(candidate: Candidate): Block[] {
       ? `Google: 표시 트래픽 ${candidate.google.approxTraffic.toLocaleString('ko-KR')}+ · ${candidate.google.publishedAt}`
       : 'Google: 현재 RSS에서 발견되지 않음'),
     block('bulleted_list_item', signal
-      ? `Naver 쇼핑 클릭 상대지표: ${shoppingStatus} · 최근 3일 평균 ${signal.recentAverage}, 이전 7일 평균 ${signal.priorAverage} · 변화 ${change} · 관측 ${signal.dataPoints}일 (판매량·절대 클릭 수가 아님)`
+      ? `네이버에서 이 상품을 눌러본 관심 흐름: ${shoppingStatus} · 최근 3일 평균이 앞선 7일 평균 대비 ${change} · 기간 ${signal.startDate}~${signal.endDate} · 평균 지표 ${signal.recentAverage}/${signal.priorAverage} · 관측 ${signal.dataPoints}일 (판매량·절대 클릭 수가 아님)`
       : 'Naver: 이 키워드는 독립 조회 목록에 없어 미조회'),
     block('bulleted_list_item', `예상 카테고리: ${candidate.category} · 점수: 트렌드 ${candidate.scores.trendScore ?? '미수집'}, 쇼핑 ${candidate.scores.shoppingScore ?? '미수집'}, 상품 ${candidate.scores.productFitScore}, 콘텐츠 ${candidate.scores.contentFitScore}`),
     block('paragraph', '사람이 확인할 것: 왜 지금 관심받는가? 실제 쿠팡 상품과 자연스럽게 연결되는가? Instagram에서 어떤 유용한 정보로 풀 것인가?')
@@ -58,7 +58,7 @@ export function notionReportPayload(report: Report, dataSourceId = NOTION_DATA_S
     block('heading_2', '우선 확인 TOP 3'),
     block('paragraph', top3),
     block('paragraph', `Google 수집 ${report.counts.googleCollected}개(상품 후보 ${report.counts.googleEligible}개, 미분류 ${report.counts.googleReview}개) · Naver 독립 조회 ${report.counts.naverQueried}개(추이 확보 ${report.counts.naverWithData}개) · 최종 후보 ${report.counts.ranked}개`),
-    block('paragraph', '네이버 쇼핑 클릭 지표는 조회 구간의 정규화 상대값입니다. 절대 검색량·판매량이 아닙니다.'),
+    block('paragraph', '네이버 수치는 같은 상품 키워드의 관심이 최근 더 커졌는지 보는 단서입니다. 몇 명이 검색하거나 구매했는지는 알 수 없고, 다른 상품과 관심 규모를 비교할 수도 없습니다.'),
     ...report.notes.map((note) => block('bulleted_list_item', note)),
     block('heading_2', 'TOP 10')
   ];

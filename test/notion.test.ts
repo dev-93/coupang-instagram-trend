@@ -63,7 +63,7 @@ test('TOP 3 후보는 간결한 컬럼과 상세 근거·메모 공간을 가진
   const detail = JSON.stringify(candidatePayload.children);
   assert.match(detail, /TOP 1/);
   assert.match(detail, /Google \+ Naver/);
-  assert.match(detail, /변화 \+50%/);
+  assert.match(detail, /앞선 7일 평균 대비 \+50%/);
   assert.match(detail, /검토 메모/);
 
   const originalFetch = globalThis.fetch;

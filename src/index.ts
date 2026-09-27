@@ -56,7 +56,9 @@ async function main(): Promise<void> {
       reason: '상품 카테고리 미분류 — 사람 확인 필요'
     }));
   for (const item of pool.naverNoData) {
-    excluded.push({ keyword: item.keyword, source: 'Naver', reason: `쇼핑 클릭 추이 데이터 부족 (${item.dataPoints}/${scoring.recentDays + scoring.priorDays}일 관측)` });
+    const days = scoring.recentDays + scoring.priorDays;
+    const reason = item.dataPoints < days ? `일별 클릭 지표 미완성 (${item.dataPoints}/${days}일 유효 관측)` : '관측 기간의 클릭 지표가 모두 0';
+    excluded.push({ keyword: item.keyword, source: 'Naver', reason });
   }
   const candidates = pool.inputs.flatMap((input) => {
     const candidate = scoreCandidate(input, now);
@@ -76,6 +78,7 @@ async function main(): Promise<void> {
   ];
   if (googleError) notes.push(`Google 수집 실패: ${googleError}`);
   if (naverError) notes.push(`Naver 조회 실패: ${naverError}`);
+  if (pool.naverNoData.length > 0) notes.push('네이버 일별 값이 덜 집계되거나 모두 0인 키워드는 판단을 보류했습니다. 데이터 부족을 관심 하락으로 해석하지 마세요.');
   if (pool.naverWithData > 0 && ![...shopping.values()].some((signal) => signal.status === 'rising')) {
     notes.push('이번 실행의 네이버 감시 키워드에는 최근 3일 상승 판정이 없습니다. TOP 3는 상승 상품 확정이 아닙니다.');
   }

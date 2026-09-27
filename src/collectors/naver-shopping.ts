@@ -32,9 +32,11 @@ export function summarizeShopping(
   const values = new Map(data.map((point) => [point.period, point.ratio]));
   const days = scoring.recentDays + scoring.priorDays;
   const series = Array.from({ length: days }, (_, index) => values.get(shiftDate(startDate, index)));
-  const complete = series.every((value) => typeof value === 'number' && Number.isFinite(value));
+  const valid = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100;
+  const dataPoints = series.filter(valid).length;
+  const complete = dataPoints === days;
   if (!complete) {
-    return { keyword, categoryCode, startDate, endDate, recentAverage: 0, priorAverage: 0, changePercent: null, dataPoints: data.length, status: 'no_data' };
+    return { keyword, categoryCode, startDate, endDate, recentAverage: 0, priorAverage: 0, changePercent: null, dataPoints, status: 'no_data' };
   }
 
   const numeric = series as number[];
@@ -49,7 +51,7 @@ export function summarizeShopping(
     keyword, categoryCode, startDate, endDate,
     recentAverage: Math.round(recentAverage * 100) / 100,
     priorAverage: Math.round(priorAverage * 100) / 100,
-    changePercent, dataPoints: data.length, status
+    changePercent, dataPoints, status
   };
 }
 

@@ -12,8 +12,10 @@ export function parseGoogleRss(xml: string): Trend[] {
   const items = Array.isArray(rawItems) ? rawItems : [rawItems];
   return items.flatMap((item: Record<string, unknown>) => {
     const keyword = String(item.title ?? '').trim();
-    const publishedAt = new Date(String(item.pubDate ?? '')).toISOString();
-    if (!keyword) return [];
+    const published = new Date(String(item.pubDate ?? ''));
+    // 잘못된 항목 하나 때문에 유효한 RSS 항목까지 모두 버리지 않는다.
+    if (!keyword || !Number.isFinite(published.getTime())) return [];
+    const publishedAt = published.toISOString();
     const trafficText = String(item['ht:approx_traffic'] ?? '0');
     const approxTraffic = Number(trafficText.replace(/[^\d]/g, '')) || 0;
     const rawNews = item['ht:news_item'];

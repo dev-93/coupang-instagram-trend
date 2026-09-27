@@ -7,6 +7,9 @@
     "daily": "node --import tsx src/index.ts",
     "dev": "node --watch --import tsx src/index.ts",
     "verify:naver": "node --import tsx src/verify-naver.ts",
+    "briefing:read": "node --import tsx src/briefing-cli.ts read",
+    "briefing:send": "node --import tsx src/briefing-cli.ts send",
+    "telegram:test": "node --import tsx src/briefing-cli.ts test",
     "check": "tsc --noEmit",
     "test": "node --import tsx --test test/*.test.ts"
   },
