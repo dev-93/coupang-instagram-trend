@@ -1,7 +1,7 @@
 import { chmod, mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { LatestRun } from './report/notion-reader.js';
-import { sendTelegram, TelegramSendError, telegramText } from './report/telegram.js';
+import { escapeTelegramHtml as html, sendTelegram, TelegramSendError, telegramText } from './report/telegram.js';
 
 interface Envelope { kind: 'idea' | 'no_idea' | 'collection_issue'; runId: string | null }
 export interface Idea extends Envelope {
@@ -65,22 +65,27 @@ export function parseBriefing(value: unknown): Briefing {
 
 export function renderBriefing(briefing: Briefing, run: LatestRun | null): string {
   if (briefing.kind === 'no_idea') throw new Error('실험안 없음은 Telegram에 보내지 않습니다.');
-  if (briefing.kind === 'collection_issue') return telegramText(`수집 확인 필요\n${briefing.reason}${run ? `\n실행 기록: ${run.url}` : ''}`);
+  if (briefing.kind === 'collection_issue') return telegramText(`[쿠팡] <b>수집 확인 필요</b>\n\n${html(briefing.reason)}${run ? `\n\n<a href="${html(run.url)}">실행 기록 보기</a>` : ''}`);
   if (!run) throw new Error('실험안에는 실행 기록이 필요합니다.');
   const lines = [
-    '[쿠팡] 콘텐츠 실험안 1개',
-    `키워드: ${briefing.keyword}`, `볼 사람: ${briefing.audience}`, `불편한 상황: ${briefing.problem}`,
-    `지금 쓰는 방법: ${briefing.existingAlternative}`,
-    '', '확인한 근거',
-    ...briefing.evidence.map((item, i) => `${i + 1}. ${item.fact}\n${item.url}`),
-    '', `가설: ${briefing.hypothesis}`, `첫 2초: ${briefing.hook}`,
-    '찍을 장면', ...briefing.shots.map((shot, i) => `${i + 1}. ${shot}`),
-    `연결할 상품: ${briefing.productConnection}`, `구매로 이어질 이유(가설): ${briefing.purchaseReason}`,
-    `마무리 문구: ${briefing.cta}`, `게시 전 확인: ${briefing.checks.join(' / ')}`,
-    `실험에서 볼 것: ${briefing.measurement}`,
-    '', '반응·구매는 아직 검증되지 않았습니다.',
-    ...(run.collectionWarnings.some((line) => /수집 실패|조회 실패/.test(line)) ? ['수집 상태: 일부 출처 미수집. 실행 기록 확인 필요.'] : []),
-    `수집: ${new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(run.generatedAt))} · ${run.url}`
+    `[쿠팡] <b>${html(briefing.keyword)} · 콘텐츠 실험</b>`,
+    `<i>볼 사람: ${html(briefing.audience)}</i>`,
+    '', '💡 <b>이번에 볼 가설</b>', html(briefing.hypothesis),
+    '', '🎬 <b>영상 구성</b>', `<b>첫 2초</b>  “${html(briefing.hook)}”`,
+    ...briefing.shots.map((shot, i) => `${i + 1}. ${html(shot)}`),
+    '', '🛒 <b>상품 연결</b>', html(briefing.productConnection),
+    `<b>구매 이유(가설)</b>  ${html(briefing.purchaseReason)}`,
+    '', '💬 <b>마무리 문구</b>', html(briefing.cta),
+    '', '✅ <b>게시 전 확인</b>', ...briefing.checks.map((check) => `• ${html(check)}`),
+    '', '📊 <b>확인할 반응</b>', html(briefing.measurement),
+    '', '<blockquote expandable><b>🔎 근거·검토 메모 — 펼쳐보기</b>',
+    `<b>불편</b>  ${html(briefing.problem)}`,
+    `<b>현재 대안</b>  ${html(briefing.existingAlternative)}`,
+    ...briefing.evidence.map((item, i) => `\n<a href="${html(item.url)}">출처 ${i + 1}</a>  ${html(item.fact)}`),
+    '</blockquote>',
+    '', '<i>반응·구매는 아직 검증 전인 실험입니다.</i>',
+    ...(run.collectionWarnings.some((line) => /수집 실패|조회 실패/.test(line)) ? ['⚠️ 일부 출처 미수집 · 실행 기록 확인 필요'] : []),
+    `<a href="${html(run.url)}">수집 기록 보기</a> · ${new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(run.generatedAt))}`
   ];
   return telegramText(lines.join('\n'));
 }
@@ -165,7 +170,7 @@ export async function deliverBriefing(briefing: Briefing, run: LatestRun | null,
     await saveHistory(directory, records);
     if (text === null) return '새 실험안 없음: 로컬 처리 기록만 남겼습니다. Telegram 전송 없음.';
     try {
-      record.messageId = await sendTelegram(text);
+      record.messageId = await sendTelegram(text, 'HTML');
     } catch (error) {
       if (!(error instanceof TelegramSendError) || !error.deliveryUncertain) {
         records.pop();

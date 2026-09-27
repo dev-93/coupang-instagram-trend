@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { assertCurrentRun, deliverBriefing, parseBriefing, readDeliveryHistory, renderBriefing, type Idea } from '../src/briefing.js';
 import { isFreshRun, readLatestRun, type LatestRun } from '../src/report/notion-reader.js';
-import { sendTelegram, TelegramSendError, telegramText } from '../src/report/telegram.js';
+import { editTelegram, sendTelegram, TelegramSendError, telegramText } from '../src/report/telegram.js';
 
 const run: LatestRun = {
   id: '11111111-1111-1111-1111-111111111111', url: 'https://www.notion.so/example',
@@ -48,6 +48,16 @@ test('Telegram 접두사·길이를 제한하고 Markdown 기호를 그대로 �
       return new Response(JSON.stringify({ ok: true, result: { message_id: 100 } }));
     };
     assert.equal(await sendTelegram('_<테스트> & [링크]'), 100);
+    globalThis.fetch = async (url, init) => {
+      const body = JSON.parse(String(init?.body));
+      assert.match(String(url), /\/editMessageText$/);
+      assert.equal(body.message_id, 100);
+      assert.equal(body.parse_mode, 'HTML');
+      assert.match(body.text, /&lt;b&gt;사용자 입력 &amp; 문구&lt;\/b&gt;/);
+      assert.match(body.text, /<blockquote expandable>/);
+      return new Response(JSON.stringify({ ok: true, result: { message_id: 100 } }));
+    };
+    assert.equal(await editTelegram(100, renderBriefing({ ...idea, hook: '<b>사용자 입력 & 문구</b>' }, run), 'HTML'), 100);
     globalThis.fetch = async () => { throw new Error('https://api.telegram.org/bottest-token/sendMessage'); };
     await assert.rejects(sendTelegram('테스트'), (error: unknown) => {
       assert.ok(error instanceof TelegramSendError);

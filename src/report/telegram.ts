@@ -1,5 +1,9 @@
 export const TELEGRAM_PREFIX = '[쿠팡]';
 
+export function escapeTelegramHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 export function telegramText(text: string): string {
   const trimmed = text.trim();
   if (!trimmed || trimmed === TELEGRAM_PREFIX) throw new Error('Telegram 메시지가 비어 있습니다.');
@@ -13,7 +17,16 @@ export class TelegramSendError extends Error {
   constructor(message: string, readonly deliveryUncertain: boolean) { super(message); }
 }
 
-export async function sendTelegram(text: string): Promise<number> {
+export async function sendTelegram(text: string, parseMode?: 'HTML'): Promise<number> {
+  return telegramRequest('sendMessage', text, parseMode);
+}
+
+export async function editTelegram(messageId: number, text: string, parseMode?: 'HTML'): Promise<number> {
+  if (!Number.isInteger(messageId) || messageId <= 0) throw new Error('수정할 Telegram 메시지 ID가 올바르지 않습니다.');
+  return telegramRequest('editMessageText', text, parseMode, messageId);
+}
+
+async function telegramRequest(method: 'sendMessage' | 'editMessageText', text: string, parseMode?: 'HTML', messageId?: number): Promise<number> {
   const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
   const chatId = process.env.TELEGRAM_CHAT_ID?.trim();
   if (!token || !chatId) throw new Error('TELEGRAM_BOT_TOKEN 또는 TELEGRAM_CHAT_ID가 없습니다.');
@@ -21,9 +34,12 @@ export async function sendTelegram(text: string): Promise<number> {
   let response: Response;
   let body: { ok?: boolean; error_code?: number; result?: { message_id?: number } };
   try {
-    response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text: message, link_preview_options: { is_disabled: true } }),
+      body: JSON.stringify({ chat_id: chatId, text: message,
+        ...(parseMode ? { parse_mode: parseMode } : {}),
+        ...(messageId === undefined ? {} : { message_id: messageId }),
+        link_preview_options: { is_disabled: true } }),
       signal: AbortSignal.timeout(20000)
     });
     body = await response.json() as typeof body;

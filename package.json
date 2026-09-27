@@ -9,6 +9,7 @@
     "verify:naver": "node --import tsx src/verify-naver.ts",
     "briefing:read": "node --import tsx src/briefing-cli.ts read",
     "briefing:send": "node --import tsx src/briefing-cli.ts send",
+    "briefing:refresh": "node --import tsx src/briefing-cli.ts refresh",
     "telegram:test": "node --import tsx src/briefing-cli.ts test",
     "check": "tsc --noEmit",
     "test": "node --import tsx --test test/*.test.ts"

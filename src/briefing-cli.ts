@@ -1,9 +1,9 @@
 import 'dotenv/config';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { deliverBriefing, parseBriefing, readDeliveryHistory } from './briefing.js';
+import { assertCurrentRun, deliverBriefing, deliveryKey, parseBriefing, readDeliveryHistory, renderBriefing } from './briefing.js';
 import { readLatestRun } from './report/notion-reader.js';
-import { sendTelegram } from './report/telegram.js';
+import { editTelegram, sendTelegram } from './report/telegram.js';
 
 const directory = resolve('.runtime');
 
@@ -24,7 +24,7 @@ async function main(): Promise<void> {
     }, null, 2));
     return;
   }
-  if (command === 'send') {
+  if (command === 'send' || command === 'refresh') {
     const filename = process.argv[3];
     if (!filename) throw new Error('사용법: npm run briefing:send -- .runtime/briefing.json');
     let value: unknown;
@@ -33,10 +33,20 @@ async function main(): Promise<void> {
     const briefing = parseBriefing(value);
     // Notion 자체가 불통일 때도 짧은 수집 오류 알림은 보낼 수 있다.
     const run = briefing.kind === 'collection_issue' ? null : await readLatestRun(token);
+    if (command === 'refresh') {
+      if (briefing.kind !== 'idea') throw new Error('형식 수정은 이미 전송한 실험안만 가능합니다.');
+      assertCurrentRun(briefing, run);
+      const history = await readDeliveryHistory(directory);
+      const record = [...history].reverse().find((item) => item.status === 'sent' && item.runId === briefing.runId && item.key === deliveryKey(briefing, new Date()));
+      if (!record?.messageId) throw new Error('같은 실험안의 전송 기록이 없어 기존 메시지를 수정할 수 없습니다.');
+      const id = await editTelegram(record.messageId, renderBriefing(briefing, run), 'HTML');
+      console.log(`기존 Telegram 메시지 형식 수정 완료 (메시지 ${id})`);
+      return;
+    }
     console.log(await deliverBriefing(briefing, run, directory));
     return;
   }
-  throw new Error('명령은 read, send, test 중 하나여야 합니다.');
+  throw new Error('명령은 read, send, refresh, test 중 하나여야 합니다.');
 }
 
 main().catch((error: unknown) => {
