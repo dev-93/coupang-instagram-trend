@@ -2,9 +2,6 @@ name: Daily shopping trends
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 17 * * *'
-      timezone: 'Asia/Seoul'
 
 permissions:
   contents: read

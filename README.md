@@ -50,9 +50,11 @@ TOP 3 후보 DB의 표 컬럼은 `키워드`, `발견시각`, `예상 카테고�
 
 ## 하루 한 번 자동 실행
 
-공개 GitHub 저장소의 [Actions 워크플로](.github/workflows/daily.yml)가 한국시간 **매일 17:00에 한 번** `npm run daily`를 실행합니다. Mac이 꺼져 있어도 실행됩니다. Actions 화면의 **Run workflow**로 수동 실행도 가능합니다. 워크플로는 `npm ci`, 타입 검사, 테스트를 통과한 뒤 Notion에 기록합니다.
+Railway의 `shopping-trend-collector`가 한국시간 **매일 17:00에 한 번** `npm run daily`를 실행합니다. Mac이 꺼져 있어도 수집합니다. UTC 기준 cron은 `0 8 * * *`입니다. 실행 후 종료하며 최대 10분으로 제한합니다. 배포할 때 Docker 빌드에서 타입 검사와 테스트를 통과해야 합니다. 실제 서비스·비밀 변수·실행 확인 방법은 [Railway 운영 기록](docs/railway.md)에 있습니다.
 
-GitHub 저장소의 **Settings → Secrets and variables → Actions → Repository secrets**에 `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`, `NOTION_TOKEN`을 각각 등록해야 합니다. 로컬 `.env`는 GitHub에 자동 전달되지 않으며 Git에서 제외됩니다. 비밀값을 코드·워크플로·커밋·이슈에 넣지 마세요. GitHub에서 예약 실행이 지연되거나 드물게 누락될 수 있으므로 Actions 실행 이력과 Notion 기록을 확인하세요. [GitHub 공식 일정 문서](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows)에 따르면 **공개 저장소는 60일간 활동이 없으면 예약 실행이 자동 비활성화**될 수 있습니다. 이 경우 Actions에서 워크플로를 다시 활성화해야 합니다.
+수집용 `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`, `NOTION_TOKEN`은 Railway 서비스의 보호된 Variables에 등록합니다. `.env`와 `.runtime/`는 Git과 Docker 이미지에 포함하지 않습니다. AI API나 Telegram 토큰은 이 수집 서비스에 필요하지 않습니다. Railway도 분 단위 정시 실행을 보장하지 않으며 몇 분 지연될 수 있습니다. [Railway 공식 cron 문서](https://docs.railway.com/cron-jobs)
+
+GitHub [Actions 워크플로](.github/workflows/daily.yml)는 중복 예약을 끄고 수동 실행만 유지합니다. 복구가 필요하면 Actions의 **Run workflow**를 사용할 수 있으며, 이때 수집용 키 3개는 기존 Repository secrets를 사용합니다. 수동·배포 실행도 새 Notion 행을 만들 수 있습니다.
 
 ## 데이터와 점수의 의미
 
@@ -70,13 +72,13 @@ Google 후보가 없어도 네이버 감시 목록은 조회합니다. 두 수�
 
 [콘텐츠 실험안 운영 지침](docs/content-briefing.md)에 따라 Mac의 `launchd`가 **매일 18:00**에 Codex CLI를 실행합니다. Codex가 당일 17:00 이후의 수집 기록과 웹의 실제 사용 경험을 읽고 **대상·불편·근거·영상 장면·상품 연결·구매 이유·측정**을 최대 1개 실험안으로 정리합니다. 수집이 아직 끝나지 않았으면 과거 기록을 오늘 새 후보로 보내지 않습니다. 새 실험안이 없으면 알림을 생략하며, 같은 기록과 같은 실험의 반복 전송을 막습니다. 전송 메시지는 항상 `[쿠팡]`으로 시작합니다.
 
-일반 Node.js 수집기가 AI 가설을 만드는 것은 아닙니다. Codex CLI가 ChatGPT 계정으로 로그인되어 있어야 하며 **Mac이 켜져 있고 로그인·인터넷 연결이 유지되어야** 합니다. Codex 앱이나 이 대화는 열어둘 필요가 없습니다. 잠자기 중 놓친 예약은 깨어날 때 실행되지만 당일 데이터가 없으면 추천을 보류합니다. 기존 GitHub 수집은 Mac 상태와 별개로 유지됩니다. 유료 AI API를 추가하지 않으며 Codex 구독 사용량 제한은 적용됩니다. 새 Notion DB는 만들지 않습니다. `.runtime/`에는 실험안·처리 이력·예약 상태만 남기고 Git에서 제외합니다.
+일반 Node.js 수집기가 AI 가설을 만드는 것은 아닙니다. Codex CLI가 ChatGPT 계정으로 로그인되어 있어야 하며 **Mac이 켜져 있고 로그인·인터넷 연결이 유지되어야** 합니다. Codex 앱이나 이 대화는 열어둘 필요가 없습니다. 잠자기 중 놓친 예약은 깨어날 때 실행되지만 당일 데이터가 없으면 추천을 보류합니다. Railway 수집은 Mac 상태와 별개로 유지됩니다. 해석 작업은 당일 Notion 기록과 출처 실패 경고를 확인합니다. 유료 AI API를 추가하지 않으며 Codex 구독 사용량 제한은 적용됩니다. 새 Notion DB는 만들지 않습니다. `.runtime/`에는 실험안·처리 이력·예약 상태만 남기고 Git에서 제외합니다.
 
 ```bash
 codex login status       # Logged in using ChatGPT 확인
 npm run schedule:install # Mac 시간대 Asia/Seoul에서 매일 18:00 예약 등록
 npm run schedule:status  # 실제 등록과 최근 실행 결과 확인
-npm run schedule:remove # 로컬 해석·Telegram 예약 해제 (GitHub 수집은 별도)
+npm run schedule:remove # 로컬 해석·Telegram 예약 해제 (Railway 수집은 별도)
 ```
 
 예약은 `~/Library/LaunchAgents/com.taenam.coupang-content-briefing.plist`에 등록됩니다. 프로젝트나 Node/Codex 설치 경로가 바뀌면 다시 설치합니다. 실행 중 오류가 나도 다음날 예약은 유지됩니다. Codex는 읽기 전용으로 조사하며, JSON 형식·최신 기록·중복 여부를 기존 코드가 확인한 뒤 전송합니다. 낮에 `npm run briefing:scheduled`로 점검하면 알림 없이 종료합니다. 실행 상태는 `.runtime/scheduler-status.json`, 운영 로그는 `.runtime/scheduler.log`에 남습니다. 앱 내장 예약을 동시에 등록하지 않습니다.

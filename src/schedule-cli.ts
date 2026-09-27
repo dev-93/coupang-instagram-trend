@@ -38,7 +38,7 @@ async function main(): Promise<void> {
   if (command === 'remove') {
     try { await execute('/bin/launchctl', ['bootout', service]); } catch { /* 이미 해제됐을 수 있음 */ }
     await rm(plist, { force: true });
-    console.log('Mac 콘텐츠 해석·Telegram 예약을 해제했습니다. GitHub 수집 일정은 별도입니다.');
+    console.log('Mac 콘텐츠 해석·Telegram 예약을 해제했습니다. Railway 수집 일정은 별도입니다.');
     return;
   }
   if (command !== 'install') throw new Error('명령은 install, status, remove 중 하나여야 합니다.');
