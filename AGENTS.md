@@ -3,7 +3,7 @@
 - 가설: Google 급상승 검색어와 독립적으로 감시하는 네이버 쇼핑 키워드를 함께 보면, 사람이 쿠팡 파트너스용 Instagram 콘텐츠 실험 후보를 더 빨리 고를 수 있다. 전환이나 수익성은 아직 검증되지 않았다.
 - 기술: Node.js 22+, TypeScript. `npm install` 후 `.env`에 NAVER API HUB 키와 Notion 토큰을 넣고 `npm run daily`를 실행한다. 실행마다 Notion 실행 기록 DB에 한 행을 추가하며, TOP 3가 있으면 후보 DB에 각각 기록한다. 로컬 Markdown/JSON 보고서와 Notion 원본 JSON 블록은 더 이상 생성하지 않는다.
 - 성공 신호: 매일 확인할 만한 주제가 나오고, 직접 작성한 콘텐츠의 저장·클릭·파트너스 전환이 관찰된다. 중단 신호: 여러 실행에서 유효 후보가 거의 없거나 후보가 반복해서 콘텐츠·구매와 연결되지 않는다.
-- 점검: `npm run check`, `npm test`, 실제 소스 사용 `npm run daily`. 로컬 API 키는 `.env`, GitHub Actions용 키는 저장소 Secrets에만 두며 로그·커밋에 남기지 않는다. 한국시간 08:00·18:00에 수집을 예약하며, Instagram 자동 게시·자동 링크 생성은 범위 밖이다.
+- 점검: `npm run check`, `npm test`, 실제 소스 사용 `npm run daily`. 로컬 API 키는 `.env`, GitHub Actions용 키는 저장소 Secrets에만 두며 로그·커밋에 남기지 않는다. 한국시간 매일 17:00에 한 번 수집하고, Codex 콘텐츠 해석·Telegram 예약 설정은 매일 18:00이다. Instagram 자동 게시·자동 링크 생성은 범위 밖이다.
 
 ## MVP 원칙
 
