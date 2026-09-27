@@ -20,11 +20,11 @@
   },
   "dependencies": {
     "dotenv": "^16.6.1",
-    "fast-xml-parser": "^5.2.5"
+    "fast-xml-parser": "^5.2.5",
+    "tsx": "^4.20.3"
   },
   "devDependencies": {
     "@types/node": "^22.15.30",
-    "tsx": "^4.20.3",
     "typescript": "^5.8.3"
   }
 }

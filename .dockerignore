@@ -1,0 +1,10 @@
+# Only the collector source and build checks enter the Docker context.
+*
+!Dockerfile
+!package.json
+!package-lock.json
+!tsconfig.json
+!src/
+!src/**
+!test/
+!test/**
