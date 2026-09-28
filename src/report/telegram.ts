@@ -21,14 +21,25 @@ export async function sendTelegram(text: string, parseMode?: 'HTML'): Promise<nu
   return telegramRequest('sendMessage', text, parseMode);
 }
 
+export async function sendAssistantTelegram(text: string, parseMode?: 'HTML'): Promise<number> {
+  const token = process.env.ASSISTANT_TELEGRAM_BOT_TOKEN?.trim();
+  const chatId = process.env.ASSISTANT_TELEGRAM_CHAT_ID?.trim() || process.env.TELEGRAM_CHAT_ID?.trim();
+  if (!token) throw new Error('ASSISTANT_TELEGRAM_BOT_TOKEN이 없습니다.');
+  if (!chatId) throw new Error('ASSISTANT_TELEGRAM_CHAT_ID 또는 TELEGRAM_CHAT_ID가 없습니다.');
+  return telegramRequest('sendMessage', text, parseMode, undefined, { token, chatId });
+}
+
 export async function editTelegram(messageId: number, text: string, parseMode?: 'HTML'): Promise<number> {
   if (!Number.isInteger(messageId) || messageId <= 0) throw new Error('수정할 Telegram 메시지 ID가 올바르지 않습니다.');
   return telegramRequest('editMessageText', text, parseMode, messageId);
 }
 
-async function telegramRequest(method: 'sendMessage' | 'editMessageText', text: string, parseMode?: 'HTML', messageId?: number): Promise<number> {
-  const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
-  const chatId = process.env.TELEGRAM_CHAT_ID?.trim();
+async function telegramRequest(
+  method: 'sendMessage' | 'editMessageText', text: string, parseMode?: 'HTML', messageId?: number,
+  credentials?: { token: string; chatId: string }
+): Promise<number> {
+  const token = credentials?.token ?? process.env.TELEGRAM_BOT_TOKEN?.trim();
+  const chatId = credentials?.chatId ?? process.env.TELEGRAM_CHAT_ID?.trim();
   if (!token || !chatId) throw new Error('TELEGRAM_BOT_TOKEN 또는 TELEGRAM_CHAT_ID가 없습니다.');
   const message = telegramText(text);
   let response: Response;

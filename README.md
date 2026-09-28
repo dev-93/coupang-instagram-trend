@@ -37,7 +37,8 @@ npm run daily   # 한 번 실행
 npm run dev     # 개발 중 파일 변경 시 재실행
 npm run verify:naver # 키워드 1개로 네이버 인증·응답 확인
 npm run briefing:read # 최신 Notion 실행과 처리 이력 읽기
-npm run telegram:test # [쿠팡] 연결 테스트 메시지 전송
+npm run telegram:test         # 비서 봇으로 실패 알림 연결 테스트
+npm run telegram:test:content # 콘텐츠 봇 연결 테스트
 npm run check   # TypeScript 검사
 npm test        # RSS 파싱·필터·쇼핑 추이 계산 점검
 ```
@@ -68,7 +69,7 @@ Google 후보가 없어도 네이버 감시 목록은 조회합니다. 두 수�
 
 ## Codex 해석과 Telegram
 
-로컬 `.env`에 `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`를 추가합니다. `npm run telegram:test`로 연결을 확인합니다. 토큰은 Git에 넣거나 로그에 출력하지 않습니다.
+로컬 `.env`에 콘텐츠 실험안용 `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`와 실패 알림용 `ASSISTANT_TELEGRAM_BOT_TOKEN`을 설정합니다. 수집 실패와 예약 실패 알림은 비서 봇으로 보냅니다. `ASSISTANT_TELEGRAM_CHAT_ID`는 선택 항목이며, 비우면 `TELEGRAM_CHAT_ID`를 사용합니다. 비서 봇 연결 확인은 `npm run telegram:test`, 콘텐츠 봇 연결 확인은 `npm run telegram:test:content`를 사용합니다. 토큰은 Mac 로컬 `.env`에만 두고 Git이나 로그에 남기지 않습니다.
 
 [콘텐츠 실험안 운영 지침](docs/content-briefing.md)에 따라 Mac의 `launchd`가 **매일 18:00**에 Codex CLI를 실행합니다. Codex가 당일 17:00 이후의 수집 기록과 웹의 실제 사용 경험을 읽고 **대상·불편·근거·영상 장면·상품 연결·구매 이유·측정**을 최대 1개 실험안으로 정리합니다. 수집이 아직 끝나지 않았으면 과거 기록을 오늘 새 후보로 보내지 않습니다. 새 실험안이 없으면 알림을 생략하며, 같은 기록과 같은 실험의 반복 전송을 막습니다. 전송 메시지는 항상 `[쿠팡]`으로 시작합니다.
 

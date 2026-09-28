@@ -27,7 +27,7 @@ Railway cron은 UTC 기준이며 분 단위 정시 실행까지 보장하지 않
 
 루트 `Dockerfile`은 `npm ci`, `npm run check`, `npm test`를 실행한 뒤 개발 패키지를 제거한다. 런타임에 필요한 `tsx`는 production dependency다. `.dockerignore`는 소스·테스트·패키지 설정만 허용하므로 `.env`, `.runtime`, Git 이력은 이미지에 포함되지 않는다.
 
-서비스 Variables에는 `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`, `NOTION_TOKEN`만 등록한다. 기존 키를 Railway에 등록하는 사용자 지시에 따라 설정하며, 값은 코드·문서·로그에 쓰지 않는다. `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`와 Codex 로그인 정보는 Railway에 등록하지 않는다. 보호된 비밀 변수 변경은 서비스 Variables에서 한다.
+서비스 Variables에는 `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`, `NOTION_TOKEN`만 등록한다. 기존 키를 Railway에 등록하는 사용자 지시에 따라 설정하며, 값은 코드·문서·로그에 쓰지 않는다. `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `ASSISTANT_TELEGRAM_BOT_TOKEN`, `ASSISTANT_TELEGRAM_CHAT_ID`와 Codex 로그인 정보는 Railway에 등록하지 않는다. 두 Telegram 봇의 설정은 Mac 로컬 `.env`에만 둔다. 보호된 비밀 변수 변경은 서비스 Variables에서 한다.
 
 새 Railway 서비스는 기존 `railway.json` / `railway.toml` 설정을 사용할 수 없다. 이 프로젝트는 연결 도구로 실제 서비스 설정을 적용하고 이 문서에 기록한다. 이 문서를 수정하는 것만으로 예약이 변경되지는 않으므로 시간 변경 시 Railway 서비스 Settings도 변경한다. Infrastructure as Code를 추가로 도입하지 않는다. [공식 설정 전환 문서](https://docs.railway.com/infrastructure-as-code#migrating-from-config-as-code)
 

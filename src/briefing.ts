@@ -1,9 +1,9 @@
 import { chmod, mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { LatestRun } from './report/notion-reader.js';
-import { escapeTelegramHtml as html, sendTelegram, TelegramSendError, telegramText } from './report/telegram.js';
+import { escapeTelegramHtml as html, sendAssistantTelegram, sendTelegram, TelegramSendError, telegramText } from './report/telegram.js';
 
-interface Envelope { kind: 'idea' | 'no_idea' | 'collection_issue'; runId: string | null }
+interface Envelope { kind: 'idea' | 'no_idea' | 'collection_issue' | 'scheduler_failure'; runId: string | null }
 export interface Idea extends Envelope {
   kind: 'idea'; runId: string;
   ideaKey: string; keyword: string; audience: string; problem: string; existingAlternative: string;
@@ -13,7 +13,8 @@ export interface Idea extends Envelope {
 }
 interface NoIdea extends Envelope { kind: 'no_idea'; runId: string; reason: string }
 interface CollectionIssue extends Envelope { kind: 'collection_issue'; reason: string }
-export type Briefing = Idea | NoIdea | CollectionIssue;
+interface SchedulerFailure extends Envelope { kind: 'scheduler_failure'; reason: string }
+export type Briefing = Idea | NoIdea | CollectionIssue | SchedulerFailure;
 
 export interface DeliveryRecord {
   runId: string | null; kind: Briefing['kind']; key: string; at: string;
@@ -36,10 +37,10 @@ export function parseBriefing(value: unknown): Briefing {
   if (!value || typeof value !== 'object') throw new Error('실험안 JSON 객체가 필요합니다.');
   const input = value as Record<string, unknown>;
   const kind = input.kind;
-  if (kind !== 'idea' && kind !== 'no_idea' && kind !== 'collection_issue') throw new Error('kind가 올바르지 않습니다.');
-  const runId = input.runId === null && kind === 'collection_issue' ? null : requiredText(input.runId, 'runId', 36);
+  if (kind !== 'idea' && kind !== 'no_idea' && kind !== 'collection_issue' && kind !== 'scheduler_failure') throw new Error('kind가 올바르지 않습니다.');
+  const runId = input.runId === null && (kind === 'collection_issue' || kind === 'scheduler_failure') ? null : requiredText(input.runId, 'runId', 36);
   if (runId !== null && !/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(runId)) throw new Error('runId는 Notion 실행 기록의 UUID여야 합니다.');
-  if (kind !== 'idea') return { kind, runId, reason: requiredText(input.reason, 'reason') } as NoIdea | CollectionIssue;
+  if (kind !== 'idea') return { kind, runId, reason: requiredText(input.reason, 'reason') } as NoIdea | CollectionIssue | SchedulerFailure;
   if (!Array.isArray(input.evidence) || input.evidence.length < 2 || input.evidence.length > 3) throw new Error('직접 확인한 evidence 출처가 2~3개 필요합니다.');
   const evidence = input.evidence.map((item) => {
     if (!item || typeof item !== 'object') throw new Error('evidence 형식이 올바르지 않습니다.');
@@ -66,6 +67,7 @@ export function parseBriefing(value: unknown): Briefing {
 export function renderBriefing(briefing: Briefing, run: LatestRun | null): string {
   if (briefing.kind === 'no_idea') throw new Error('실험안 없음은 Telegram에 보내지 않습니다.');
   if (briefing.kind === 'collection_issue') return telegramText(`[쿠팡] <b>수집 확인 필요</b>\n\n${html(briefing.reason)}${run ? `\n\n<a href="${html(run.url)}">실행 기록 보기</a>` : ''}`);
+  if (briefing.kind === 'scheduler_failure') return telegramText(`[쿠팡] <b>Coupang Instagram Trend · 예약 브리핑 실행 실패</b>\n\n${html(briefing.reason)}`);
   if (!run) throw new Error('실험안에는 실행 기록이 필요합니다.');
   const lines = [
     `[쿠팡] <b>${html(briefing.keyword)} · 콘텐츠 실험</b>`,
@@ -91,7 +93,7 @@ export function renderBriefing(briefing: Briefing, run: LatestRun | null): strin
 }
 
 export function assertCurrentRun(briefing: Briefing, run: LatestRun | null): void {
-  if (briefing.kind === 'collection_issue') return;
+  if (briefing.kind === 'collection_issue' || briefing.kind === 'scheduler_failure') return;
   if (!run || briefing.runId !== run.id) throw new Error('실험안의 runId가 최신 실행 기록과 다릅니다. 다시 읽고 검토하세요.');
   if (!run.fresh) throw new Error('최신 실행 기록이 26시간보다 오래됐거나 실행시각이 잘못됐습니다.');
   if (briefing.kind === 'idea') {
@@ -108,14 +110,16 @@ function koreanDay(now: Date): string {
 }
 
 export function deliveryKey(briefing: Briefing, now: Date): string {
-  return briefing.kind === 'idea' ? `idea:${briefing.ideaKey.normalize('NFKC').toLowerCase().replace(/\s+/g, '')}`
-    : briefing.kind === 'collection_issue' ? `issue:${koreanDay(now)}` : `skip:${briefing.runId}`;
+  if (briefing.kind === 'idea') return `idea:${briefing.ideaKey.normalize('NFKC').toLowerCase().replace(/\s+/g, '')}`;
+  if (briefing.kind === 'collection_issue') return `issue:${koreanDay(now)}`;
+  if (briefing.kind === 'scheduler_failure') return `failure:assistant:${koreanDay(now)}`;
+  return `skip:${briefing.runId}`;
 }
 
 export function duplicateReason(records: DeliveryRecord[], briefing: Briefing, now: Date): string | null {
   if (briefing.runId && records.some((record) => record.runId === briefing.runId)) return '이미 처리한 실행 기록';
   const key = deliveryKey(briefing, now);
-  if (records.some((record) => record.key === key && now.getTime() - Date.parse(record.at) < 7 * 86_400_000)) return '최근 7일 안에 처리한 같은 실험안 또는 오늘의 수집 알림';
+  if (records.some((record) => record.key === key && now.getTime() - Date.parse(record.at) < 7 * 86_400_000)) return '최근 7일 안에 처리한 같은 실험안 또는 오늘의 운영 알림';
   return null;
 }
 
@@ -170,7 +174,9 @@ export async function deliverBriefing(briefing: Briefing, run: LatestRun | null,
     await saveHistory(directory, records);
     if (text === null) return '새 실험안 없음: 로컬 처리 기록만 남겼습니다. Telegram 전송 없음.';
     try {
-      record.messageId = await sendTelegram(text, 'HTML');
+      record.messageId = briefing.kind === 'scheduler_failure' || briefing.kind === 'collection_issue'
+        ? await sendAssistantTelegram(text, 'HTML')
+        : await sendTelegram(text, 'HTML');
     } catch (error) {
       if (!(error instanceof TelegramSendError) || !error.deliveryUncertain) {
         records.pop();

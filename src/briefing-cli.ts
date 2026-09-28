@@ -3,15 +3,20 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { assertCurrentRun, deliverBriefing, deliveryKey, parseBriefing, readDeliveryHistory, renderBriefing } from './briefing.js';
 import { readLatestRun } from './report/notion-reader.js';
-import { editTelegram, sendTelegram } from './report/telegram.js';
+import { editTelegram, sendAssistantTelegram, sendTelegram } from './report/telegram.js';
 
 const directory = resolve('.runtime');
 
 async function main(): Promise<void> {
   const command = process.argv[2];
-  if (command === 'test') {
-    const id = await sendTelegram('연결 테스트\n앞으로 콘텐츠 실험안은 [쿠팡]으로 시작합니다.\n새 실험안이 없으면 알림을 생략합니다. 현재 예약 등록 전 연결 점검입니다.');
-    console.log(`Telegram 테스트 전송 완료 (메시지 ${id})`);
+  if (command === 'test-assistant') {
+    const id = await sendAssistantTelegram('Coupang Instagram Trend · 비서 봇 연결 테스트입니다. 실패 알림 전송 경로 확인용입니다.');
+    console.log(`비서 Telegram 테스트 전송 완료 (메시지 ${id})`);
+    return;
+  }
+  if (command === 'test-content') {
+    const id = await sendTelegram('Coupang Instagram Trend · 콘텐츠 봇 연결 테스트입니다.');
+    console.log(`콘텐츠 Telegram 테스트 전송 완료 (메시지 ${id})`);
     return;
   }
   const token = process.env.NOTION_TOKEN?.trim() ?? '';
@@ -32,7 +37,7 @@ async function main(): Promise<void> {
     catch { throw new Error('실험안 파일을 읽지 못했거나 JSON 형식이 잘못됐습니다.'); }
     const briefing = parseBriefing(value);
     // Notion 자체가 불통일 때도 짧은 수집 오류 알림은 보낼 수 있다.
-    const run = briefing.kind === 'collection_issue' ? null : await readLatestRun(token);
+    const run = briefing.kind === 'collection_issue' || briefing.kind === 'scheduler_failure' ? null : await readLatestRun(token);
     if (command === 'refresh') {
       if (briefing.kind !== 'idea') throw new Error('형식 수정은 이미 전송한 실험안만 가능합니다.');
       assertCurrentRun(briefing, run);
@@ -46,7 +51,7 @@ async function main(): Promise<void> {
     console.log(await deliverBriefing(briefing, run, directory));
     return;
   }
-  throw new Error('명령은 read, send, refresh, test 중 하나여야 합니다.');
+  throw new Error('명령은 read, send, refresh, test-assistant, test-content 중 하나여야 합니다.');
 }
 
 main().catch((error: unknown) => {

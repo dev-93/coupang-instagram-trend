@@ -14,7 +14,8 @@
     "schedule:install": "node --import tsx src/schedule-cli.ts install",
     "schedule:status": "node --import tsx src/schedule-cli.ts status",
     "schedule:remove": "node --import tsx src/schedule-cli.ts remove",
-    "telegram:test": "node --import tsx src/briefing-cli.ts test",
+    "telegram:test": "node --import tsx src/briefing-cli.ts test-assistant",
+    "telegram:test:content": "node --import tsx src/briefing-cli.ts test-content",
     "check": "tsc --noEmit",
     "test": "node --import tsx --test test/*.test.ts"
   },
