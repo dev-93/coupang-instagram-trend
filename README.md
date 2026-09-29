@@ -71,6 +71,8 @@ Google 후보가 없어도 네이버 감시 목록은 조회합니다. 두 수�
 
 로컬 `.env`에 콘텐츠 실험안용 `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`와 실패 알림용 `ASSISTANT_TELEGRAM_BOT_TOKEN`을 설정합니다. 수집 실패와 예약 실패 알림은 비서 봇으로 보냅니다. `ASSISTANT_TELEGRAM_CHAT_ID`는 선택 항목이며, 비우면 `TELEGRAM_CHAT_ID`를 사용합니다. 비서 봇 연결 확인은 `npm run telegram:test`, 콘텐츠 봇 연결 확인은 `npm run telegram:test:content`를 사용합니다. 토큰은 Mac 로컬 `.env`에만 두고 Git이나 로그에 남기지 않습니다.
 
+다른 프로젝트에서 재사용할 수 있는 메시지 레이아웃과 전송 예시는 [Telegram 메시지 포맷 가이드](docs/telegram-format.md)에 있습니다.
+
 [콘텐츠 실험안 운영 지침](docs/content-briefing.md)에 따라 Mac의 `launchd`가 **매일 18:00**에 Codex CLI를 실행합니다. Codex가 당일 17:00 이후의 수집 기록과 웹의 실제 사용 경험을 읽고 **대상·불편·근거·영상 장면·상품 연결·구매 이유·측정**을 최대 1개 실험안으로 정리합니다. 수집이 아직 끝나지 않았으면 과거 기록을 오늘 새 후보로 보내지 않습니다. 새 실험안이 없으면 알림을 생략하며, 같은 기록과 같은 실험의 반복 전송을 막습니다. 전송 메시지는 항상 `[쿠팡]`으로 시작합니다.
 
 일반 Node.js 수집기가 AI 가설을 만드는 것은 아닙니다. Codex CLI가 ChatGPT 계정으로 로그인되어 있어야 하며 **Mac이 켜져 있고 로그인·인터넷 연결이 유지되어야** 합니다. Codex 앱이나 이 대화는 열어둘 필요가 없습니다. 잠자기 중 놓친 예약은 깨어날 때 실행되지만 당일 데이터가 없으면 추천을 보류합니다. Railway 수집은 Mac 상태와 별개로 유지됩니다. 해석 작업은 당일 Notion 기록과 출처 실패 경고를 확인합니다. 유료 AI API를 추가하지 않으며 Codex 구독 사용량 제한은 적용됩니다. 새 Notion DB는 만들지 않습니다. `.runtime/`에는 실험안·처리 이력·예약 상태만 남기고 Git에서 제외합니다.

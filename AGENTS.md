@@ -61,6 +61,7 @@
 - `npm run briefing:read`로 최신 기록을 읽고, 검토한 JSON을 `npm run briefing:send -- .runtime/briefing.json`으로 처리한다. 비서 봇 연결 점검은 `npm run telegram:test`, 콘텐츠 봇 연결 점검은 `npm run telegram:test:content`다.
 - 콘텐츠 실험안은 로컬 `.env`의 `TELEGRAM_BOT_TOKEN`으로 보내고, 수집 실패·예약 실패 알림은 `ASSISTANT_TELEGRAM_BOT_TOKEN`으로 비서 봇에 보낸다. 두 봇 모두 `ASSISTANT_TELEGRAM_CHAT_ID`가 비어 있으면 `TELEGRAM_CHAT_ID` 수신처를 사용한다. 토큰은 Mac 로컬 `.env`에만 둔다. 메시지는 항상 `[쿠팡]`으로 시작한다. `.runtime/`는 Git에서 제외한 처리·전송 이력이며 비밀값을 넣지 않는다.
 - 점수나 키워드만으로 영상 반응·구매를 예상하지 않는다. 실제 불편 근거, 찍을 장면, 연결 상품의 필요, 미확인 사항을 구분한다. 근거가 부족하면 추천하지 않고 가설 또는 보류로 표시한다.
+- 추천 상품을 보유하거나 직접 사용한다고 가정하지 않는다. 보유가 확인되지 않은 상품의 실물 시연·사용 후기·성능 테스트를 제안하지 말고, 촬영자가 이미 가진 일반 소품으로 문제 상황을 보여준다. 상품 설명은 확인한 판매 정보와 선택 기준으로 제한한다. 제품 실물이 없으면 성립하지 않는 아이디어는 보류한다.
 - 동일 실행과 최근 7일의 동일 실험은 다시 보내지 않는다. 새 실험이 없으면 Telegram을 보내지 않는다. 수집 장애와 예약 브리핑 실행 실패는 각각 하루 최대 한 번 알린다. Telegram 전송 결과가 불확실하거나 앞선 전송이 pending이면 중복 방지를 위해 실패 알림을 재시도하지 않고 로컬 상태에 기록한다.
 - Mac 예약은 `npm run schedule:install`로 등록하고 `npm run schedule:status`로 확인한다. Mac 로그인·전원·인터넷과 Codex CLI의 ChatGPT 로그인이 필요하며 Codex 앱 실행은 필요하지 않다. 잠자기 중 지난 예약은 깨어날 때 실행되며 당일 기록만 처리한다. Railway 수집 일정과 별개이며 등록 여부를 확인하지 않고 자동화가 켜졌다고 말하지 않는다. 해석 전에 당일 17:00 이후 Notion 기록과 출처 실패 경고를 확인한다. GitHub 수동 실행 이력은 예약 수집의 상태로 사용하지 않는다.
 
